@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -49,10 +50,12 @@ func (d Drone) Metrics() (string, error) {
 }
 
 func main() {
-	var token, host, port string
+	var token, host, port, timeout string
 	token = GetEnvVar("token", "")
 	host = GetEnvVar("host", "localhost")
 	port = GetEnvVar("port", "8080")
+	timeout = GetEnvVar("timeout", "1")
+	timeoutInt, _ := strconv.Atoi(timeout)
 
 	drone := Drone{
 		host:            host,
@@ -67,11 +70,11 @@ func main() {
 		r, _ := regexp.Compile("drone_pending_jobs [0-9]+")
 		pendingJobs := strings.Trim(r.FindString(metrics), "drone_pending_jobs ")
 		log.Println(pendingJobs)
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Duration(timeoutInt) * time.Second)
 	}
 }
 
-// GetEnvVar gets an env variable or returns a default
+// GetEnvVar gets an env variable or returns a default when not found
 func GetEnvVar(name string, def string) string {
 	val, found := os.LookupEnv(name)
 	if found {
