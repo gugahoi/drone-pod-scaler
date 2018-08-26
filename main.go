@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
-	"strings"
 	"time"
+
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
 )
 
 // Drone represents a drone server configuration
@@ -44,9 +45,21 @@ func (d Drone) Metrics() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	body, _ := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
-	return string(body), nil
+	dec := expfmt.NewDecoder(resp.Body, expfmt.FmtText)
+	for {
+		mf := &dto.MetricFamily{}
+		err = dec.Decode(mf)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+		}
+		if mf.GetName() == "drone_pending_jobs" {
+			log.Println(mf.GetMetric()[0].GetGauge().GetValue())
+		}
+	}
+	return "", nil
 }
 
 func main() {
@@ -66,10 +79,10 @@ func main() {
 	}
 
 	for {
-		metrics, _ := drone.Metrics()
-		r, _ := regexp.Compile("drone_pending_jobs [0-9]+")
-		pendingJobs := strings.Trim(r.FindString(metrics), "drone_pending_jobs ")
-		log.Println(pendingJobs)
+		drone.Metrics()
+		// r, _ := regexp.Compile("drone_pending_jobs [0-9]+")
+		// pendingJobs := strings.Trim(r.FindString(metrics), "drone_pending_jobs ")
+		// log.Println(pendingJobs)
 		time.Sleep(time.Duration(timeoutInt) * time.Second)
 	}
 }
