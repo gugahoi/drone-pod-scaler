@@ -2,16 +2,16 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 )
+
+var cummulativePendingJobs int
 
 // Drone represents a drone server configuration
 type Drone struct {
@@ -22,20 +22,8 @@ func (d Drone) fqdn() string {
 	return fmt.Sprintf("%s://%s:%s%s", d.protocol, d.host, d.port, d.metricsEndpoint)
 }
 
-// Ping returns true if the Drone server is reachable via an http get
-func (d Drone) Ping() bool {
-	req, err := http.Get(d.fqdn())
-	if err == nil {
-		return false
-	}
-	if req.StatusCode == http.StatusUnauthorized {
-		return false
-	}
-	return true
-}
-
-// Metrics gets the metrics from Drone server
-func (d Drone) Metrics() (string, error) {
+// GetMetrics gets the metrics from Drone server
+func (d Drone) GetMetrics() error {
 	r, _ := http.NewRequest("GET", d.fqdn(), nil)
 	if d.token != "" {
 		r.Header.Set("Authorization", "Bearer "+d.token)
@@ -43,23 +31,18 @@ func (d Drone) Metrics() (string, error) {
 	client := http.Client{}
 	resp, err := client.Do(r)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer resp.Body.Close()
-	dec := expfmt.NewDecoder(resp.Body, expfmt.FmtText)
-	for {
-		mf := &dto.MetricFamily{}
-		err = dec.Decode(mf)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-		}
-		if mf.GetName() == "drone_pending_jobs" {
-			log.Println(mf.GetMetric()[0].GetGauge().GetValue())
-		}
+	parser := expfmt.TextParser{}
+	s, _ := parser.TextToMetricFamilies(resp.Body)
+	v := s["drone_pending_jobs"].GetMetric()[0].GetGauge().GetValue()
+	if v == 0 {
+		cummulativePendingJobs = 0
+	} else {
+		cummulativePendingJobs += int(v)
 	}
-	return "", nil
+	return nil
 }
 
 func main() {
@@ -79,10 +62,11 @@ func main() {
 	}
 
 	for {
-		drone.Metrics()
-		// r, _ := regexp.Compile("drone_pending_jobs [0-9]+")
-		// pendingJobs := strings.Trim(r.FindString(metrics), "drone_pending_jobs ")
-		// log.Println(pendingJobs)
+		drone.GetMetrics()
+		log.Printf("Cummulative pending jobs: %d\n", cummulativePendingJobs)
+		if cummulativePendingJobs > 10 {
+			log.Println("We should probably scale now...")
+		}
 		time.Sleep(time.Duration(timeoutInt) * time.Second)
 	}
 }
