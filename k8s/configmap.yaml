@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drone-master
+  namespace: drone
+data:
+  DRONE_HOST: "0.0.0.0"
+  DRONE_GITHUB: "true"
+  DRONE_GITHUB_CLIENT: "blah"
+  DRONE_GITHUB_SECRET: "blah"
+  DRONE_SECRET: "blah"
+  DRONE_ADMIN: "gugahoi"

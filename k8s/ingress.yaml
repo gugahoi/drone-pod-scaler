@@ -1,0 +1,21 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: drone-master
+  namespace: drone
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: drone.kube.momenton.com.au
+    http:
+      paths:
+      - backend:
+          serviceName: drone-master
+          servicePort: 80
+  tls:
+  - hosts:
+    - drone.kube.momenton.com.au
+    secretName: drone-tls

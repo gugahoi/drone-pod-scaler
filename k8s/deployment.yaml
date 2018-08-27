@@ -1,0 +1,35 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drone-master
+  namespace: drone
+  labels:
+    app: drone
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drone
+  template:
+    metadata:
+      labels:
+        app: drone
+    spec:
+      containers:
+      - name: drone
+        image: drone/drone:0.8.1
+        ports:
+        - containerPort: 8000
+        - containerPort: 9000
+        envFrom:
+        - configMapRef:
+            name: drone-master
+        volumeMounts:
+        - mountPath: /var/lib/drone
+          name: drone-lib
+      volumes:
+      - name: drone-lib
+        hostPath:
+          path: /var/lib/drone
+

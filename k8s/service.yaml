@@ -1,0 +1,18 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: drone-master
+  namespace: drone
+spec:
+  selector:
+    app: drone
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 8000
+  - name: grpc
+    protocol: TCP
+    port: 9000
+    targetPort: 9000
