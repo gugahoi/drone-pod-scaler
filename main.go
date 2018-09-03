@@ -37,8 +37,8 @@ func (d Drone) GetMetrics() error {
 	parser := expfmt.TextParser{}
 	s, _ := parser.TextToMetricFamilies(resp.Body)
 	v := s["drone_pending_jobs"].GetMetric()[0].GetGauge().GetValue()
-	if v == 0 {
-		cummulativePendingJobs = 0
+	if v == 0 && cummulativePendingJobs > 0 {
+		cummulativePendingJobs--
 	} else {
 		cummulativePendingJobs += int(v)
 	}
@@ -49,14 +49,14 @@ func main() {
 	var token, host, port, timeout string
 	token = GetEnvVar("token", "")
 	host = GetEnvVar("host", "localhost")
-	port = GetEnvVar("port", "8080")
+	port = GetEnvVar("port", "80")
 	timeout = GetEnvVar("timeout", "1")
 	timeoutInt, _ := strconv.Atoi(timeout)
 
 	drone := Drone{
 		host:            host,
 		port:            port,
-		protocol:        "http",
+		protocol:        "https",
 		metricsEndpoint: "/metrics",
 		token:           token,
 	}
@@ -66,6 +66,10 @@ func main() {
 		log.Printf("Cummulative pending jobs: %d\n", cummulativePendingJobs)
 		if cummulativePendingJobs > 10 {
 			log.Println("We should probably scale now...")
+		} else if cummulativePendingJobs == 0 {
+			log.Println("Might want to scale down...")
+		} else {
+			log.Println("Nothing to do...")
 		}
 		time.Sleep(time.Duration(timeoutInt) * time.Second)
 	}
