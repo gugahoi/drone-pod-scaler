@@ -40,25 +40,26 @@ func (d Drone) GetMetrics() error {
 	if v == 0 && cummulativePendingJobs > 0 {
 		cummulativePendingJobs--
 	} else {
-		cummulativePendingJobs += int(v)
+		cummulativePendingJobs++
 	}
 	return nil
 }
 
 func main() {
-	var token, host, port, timeout string
+	var token, host, port, timeout, protocol string
 	token = GetEnvVar("token", "")
 	host = GetEnvVar("host", "localhost")
 	port = GetEnvVar("port", "80")
 	timeout = GetEnvVar("timeout", "1")
+	protocol = GetEnvVar("protocol", "http")
 	timeoutInt, _ := strconv.Atoi(timeout)
 
 	drone := Drone{
 		host:            host,
 		port:            port,
-		protocol:        "https",
-		metricsEndpoint: "/metrics",
+		protocol:        protocol,
 		token:           token,
+		metricsEndpoint: "/metrics",
 	}
 
 	for {
